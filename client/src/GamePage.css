@@ -1,7 +1,7 @@
 .game-page {
-  max-width: 1300px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 24px 24px;
   font-family: 'Helvetica Neue', Arial, sans-serif;
 }
 
@@ -119,7 +119,7 @@
 
 .ls-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
 
-.ls-sep { border-left: 2px solid var(--border) !important; }
+.ls-sep { border-left: 3px solid #555 !important; }
 .ls-total { font-weight: 700; }
 
 .live-badge {
@@ -156,7 +156,6 @@
 /* ── Scorecard table ── */
 .sc-overflow {
   overflow-x: auto;
-  overflow-y: clip;
   margin-bottom: 12px;
 }
 
@@ -182,31 +181,44 @@
   padding: 6px 10px;
 }
 
+.sc-order {
+  width: 24px;
+  min-width: 24px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text) !important;
+  padding: 0 6px;
+  text-align: center;
+}
+
 .sc-pos {
-  width: 36px;
+  width: 80px;
+  min-width: 80px;
   font-size: 11px;
   color: var(--text) !important;
   font-weight: 400 !important;
-  padding: 0 6px;
+  padding: 0 8px;
+  white-space: normal;
 }
 
 .sc-name {
   text-align: left !important;
   padding: 0 12px;
   min-width: 120px;
+  max-width: 140px;
   font-weight: 500;
 }
 
 .sc-inn-h {
-  width: 68px;
-  min-width: 68px;
-  padding: 5px 0 !important;
+  width: 84px;
+  min-width: 84px;
+  padding: 6px 0 !important;
 }
 
 .sc-inn-cell {
-  width: 68px;
-  min-width: 68px;
-  height: 64px;
+  width: 84px;
+  min-width: 84px;
+  height: 84px;
   padding: 2px 0 !important;
   vertical-align: middle;
 }
@@ -231,80 +243,67 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: #555;
+  background: #444;
   pointer-events: none;
-  z-index: -1;
 }
 
-/* Tooltip */
-.sc-inn-cell[data-tip] {
-  position: relative;
-}
-
-.sc-inn-cell[data-tip]::after {
-  content: attr(data-tip);
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: #1a1b23;
-  color: #e5e7eb;
-  font-size: 11px;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-weight: 400;
-  line-height: 1.4;
-  white-space: normal;
-  width: 200px;
-  padding: 6px 8px;
-  border-radius: 4px;
-  border: 1px solid #3a3b45;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.1s;
-  z-index: 100;
-}
-
-.sc-inn-cell[data-tip]:hover::after {
-  opacity: 1;
-}
 
 .sc-stat {
-  width: 42px;
+  width: 38px;
   font-weight: 600;
-  font-size: 16px;
-  padding: 0 10px;
+  font-size: 14px;
+  padding: 0 8px;
 }
 
-.sub-row .sc-name {
-  font-weight: 400;
-  color: var(--text);
-  padding-left: 24px !important;
-  border-left: 2px solid var(--border);
-  position: relative;
+.sc-stacked-cell {
+  vertical-align: middle !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
 }
 
-.sub-row .sc-name::before {
-  content: '';
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  width: 8px;
-  height: 1px;
-  background: var(--border);
+.sc-starter-name { font-weight: 500; }
+
+.sc-sub-name {
+  padding-left: 12px;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 500;
+
+  &::before {
+    content: '– ';
+    color: var(--text);
+  }
+}
+
+.sc-sub-pos {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.sc-sub-stat {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .sub-arrow { display: none; }
+
+.sub-inning {
+  font-size: 10px;
+  color: var(--text);
+  margin-left: 3px;
+  cursor: default;
+}
 
 .totals-row td {
   font-weight: 700;
   background: var(--code-bg);
   padding: 5px 8px;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .runs-cell {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
 }
 

@@ -11,12 +11,24 @@ interface RunnerMovement {
   end: string | null
   outBase: string | null
   isOut: boolean
+  outNumber?: number
 }
 
 interface Runner {
   movement: RunnerMovement
-  details: { runner: Person; isScoringEvent: boolean; event: string }
+  details: { runner: Person; isScoringEvent: boolean; event: string; eventType: string; description?: string; playIndex?: number }
   credits: { position: { code: string }; credit: string }[]
+}
+
+interface PlayEvent {
+  type: string
+  index?: number
+  isPitch?: boolean
+  isSubstitution?: boolean
+  isBaseRunningPlay?: boolean
+  player?: { id: number }
+  details?: { description: string; eventType: string }
+  hitData?: { trajectory?: string }
 }
 
 interface Play {
@@ -24,12 +36,14 @@ interface Play {
   about: { inning: number; halfInning: string }
   matchup: { batter: Person }
   runners: Runner[]
+  playEvents?: PlayEvent[]
   atBatIndex: number
 }
 
 interface PlayerStats {
   person: Person
   position: { abbreviation: string }
+  allPositions?: { abbreviation: string }[]
   battingOrder?: string
   stats: {
     batting: { atBats?: number; runs?: number; hits?: number; rbi?: number; baseOnBalls?: number; strikeOuts?: number }
@@ -88,14 +102,24 @@ function getBasePath(from: string | null, to: string | null): string[] {
   return [...BASE_ORDER.slice(fromIdx + 1, toIdx + 1)]
 }
 
-function getOutCredits(runners: Runner[], batterId: number): string {
+function getOutCredits(runners: Runner[], batterId: number, trajectory?: string): string {
   const br = runners.find(r => r.details.runner.id === batterId && r.movement.isOut)
   if (!br) return 'OUT'
   const assists = br.credits.filter(c => c.credit === 'f_assist').map(c => c.position.code)
   const putout  = br.credits.find(c => c.credit === 'f_putout')?.position.code
-  if (assists.length && putout) return [...assists, putout].join('-')
-  if (putout) return parseInt(putout) >= 7 ? `F${putout}` : putout
-  return 'OUT'
+  if (!putout) return 'OUT'
+
+  if (!trajectory || trajectory === 'ground_ball') {
+    return assists.length ? [...assists, putout].join('-') : putout
+  }
+
+  const prefix = trajectory === 'popup' ? 'P' : trajectory === 'line_drive' ? 'L' : 'F'
+  return assists.length ? `${prefix}${[...assists, putout].join('-')}` : `${prefix}${putout}`
+}
+
+function getTrajectory(play: Play): string | undefined {
+  const pitches = play.playEvents?.filter(e => e.isPitch) ?? []
+  return pitches[pitches.length - 1]?.hitData?.trajectory
 }
 
 function getNotation(play: Play): string {
@@ -105,7 +129,11 @@ function getNotation(play: Play): string {
     case 'walk':            return 'BB'
     case 'intent_walk':     return 'IBB'
     case 'hit_by_pitch':    return 'HBP'
-    case 'strikeout':       return 'K'
+    case 'strikeout': {
+      const pitches = play.playEvents?.filter(e => e.isPitch) ?? []
+      const last = pitches[pitches.length - 1]
+      return last?.details?.description === 'Called Strike' ? 'ꓘ' : 'K'
+    }
     case 'single':          return '1B'
     case 'double':          return '2B'
     case 'triple':          return '3B'
@@ -116,18 +144,24 @@ function getNotation(play: Play): string {
     case 'catcher_interf':  return 'CI'
     case 'force_out': {
       const br = play.runners.find(r => r.details.runner.id === id && r.movement.start === null)
-      return br && !br.movement.isOut ? 'FC' : getOutCredits(play.runners, id)
+      return br && !br.movement.isOut ? 'FC' : getOutCredits(play.runners, id, getTrajectory(play))
     }
     case 'grounded_into_double_play': return 'GDP'
     case 'double_play':     return 'DP'
-    case 'field_out':       return getOutCredits(play.runners, id)
+    case 'field_out':       return getOutCredits(play.runners, id, getTrajectory(play))
     default:                return play.result.event.slice(0, 3).toUpperCase()
   }
 }
 
+function getBatterOutNumber(play: Play, batterId: number): number | undefined {
+  if (!play.result.isOut) return undefined
+  const br = play.runners.find(r => r.details.runner.id === batterId && r.movement.isOut)
+  return br?.movement.outNumber
+}
+
 // ─── Runner path tracing ──────────────────────────────────────────────────────
 
-interface RunnerPath { pathBases: string[]; scored: boolean }
+interface RunnerPath { pathBases: string[]; scored: boolean; stolenBaseSegment?: [string, string]; stolenBaseDesc?: string }
 
 function traceRunner(batterId: number, atBatIndex: number, allPlays: Play[]): RunnerPath {
   const { inning, halfInning } = allPlays[atBatIndex].about
@@ -143,6 +177,8 @@ function traceRunner(batterId: number, atBatIndex: number, allPlays: Play[]): Ru
 
   const pathBases = [...initialPath]
   let cur = own.movement.end
+  let stolenBaseSegment: [string, string] | undefined
+  let stolenBaseDesc: string | undefined
 
   for (let i = atBatIndex + 1; i < allPlays.length; i++) {
     const play = allPlays[i]
@@ -150,17 +186,23 @@ function traceRunner(batterId: number, atBatIndex: number, allPlays: Play[]): Ru
 
     const entry = play.runners.find(r => r.details.runner.id === batterId)
     if (!entry) continue
-    if (entry.movement.isOut) return { pathBases, scored: false }
+    if (entry.movement.isOut) return { pathBases, scored: false, stolenBaseSegment, stolenBaseDesc }
 
     const next = entry.movement.end
     if (!next) continue
 
+    if (entry.details.eventType.startsWith('stolen_base') && !stolenBaseSegment) {
+      stolenBaseSegment = [cur, next]
+      const sbEvent = play.playEvents?.find(e => e.index === entry.details.playIndex && e.type === 'action')
+      stolenBaseDesc = sbEvent?.details?.description ?? entry.details.event
+    }
+
     pathBases.push(...getBasePath(cur, next))
     cur = next
-    if (next === 'score') return { pathBases, scored: true }
+    if (next === 'score') return { pathBases, scored: true, stolenBaseSegment, stolenBaseDesc }
   }
 
-  return { pathBases, scored: false }
+  return { pathBases, scored: false, stolenBaseSegment, stolenBaseDesc }
 }
 
 // ─── Diamond SVG ─────────────────────────────────────────────────────────────
@@ -169,7 +211,7 @@ const COORDS: Record<string, [number, number]> = {
   home: [25, 43], '1B': [43, 25], '2B': [25, 7], '3B': [7, 25], score: [25, 43],
 }
 
-function Diamond({ pathBases, scored, notation }: { pathBases: string[]; scored: boolean; notation: string }) {
+function Diamond({ pathBases, scored, notation, outNumber, stolenBaseSegment, stolenBaseDesc }: { pathBases: string[]; scored: boolean; notation: string; outNumber?: number; stolenBaseSegment?: [string, string]; stolenBaseDesc?: string }) {
   const path = ['home', ...pathBases]
   const segments: [[number,number],[number,number]][] = []
   for (let i = 0; i < path.length - 1; i++) {
@@ -182,15 +224,42 @@ function Diamond({ pathBases, scored, notation }: { pathBases: string[]; scored:
   const diamondFill = scored ? 'rgba(74,222,128,0.12)' : 'none'
 
   return (
-    <svg width="60" height="60" viewBox="0 0 50 50" className="diamond-svg">
+    <svg width="78" height="78" viewBox="0 0 50 50" className="diamond-svg">
       <polygon points="25,7 43,25 25,43 7,25" fill={diamondFill} stroke="#2a2a2a" strokeWidth="1.2" />
       {segments.map(([a, b], i) => (
         <line key={i} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" />
       ))}
-      <text x="25" y="29" textAnchor="middle" fontSize={notation.length > 3 ? 9 : 11} fill={textColor}
+      <text x="25" y="29" textAnchor="middle" fontSize={notation.length > 3 ? 11 : 15} fill={textColor}
         fontFamily="Helvetica Neue, Arial, sans-serif" fontWeight="700">
         {notation}
       </text>
+      {stolenBaseSegment && (() => {
+        const [from, to] = stolenBaseSegment
+        const a = COORDS[from] ?? COORDS['home']
+        const b = COORDS[to]   ?? COORDS['score']
+        const mx = (a[0] + b[0]) / 2
+        const my = (a[1] + b[1]) / 2
+        // perpendicular CCW unit vector points outward from diamond center
+        const dx = b[0] - a[0], dy = b[1] - a[1]
+        const len = Math.sqrt(dx * dx + dy * dy)
+        const px = -dy / len, py = dx / len
+        const offset = 9
+        return (
+          <g>
+            {stolenBaseDesc && <title>{stolenBaseDesc}</title>}
+            <text x={mx + px * offset} y={my + py * offset + 2.5} textAnchor="middle" fontSize="7.5" fill="#a78bfa"
+              fontFamily="Helvetica Neue, Arial, sans-serif" fontWeight="700">
+              SB
+            </text>
+          </g>
+        )
+      })()}
+      {outNumber && (
+        <text x="46" y="46" textAnchor="end" fontSize="9" fill="#666"
+          fontFamily="Helvetica Neue, Arial, sans-serif" fontWeight="600">
+          {outNumber}
+        </text>
+      )}
     </svg>
   )
 }
@@ -203,6 +272,23 @@ function buildPlayMap(allPlays: Play[]) {
     if (!play.result.eventType) continue  // skip in-progress at-bats
     const key = `${play.about.halfInning}-${play.about.inning}-${play.matchup.batter.id}`
     if (!map.has(key)) map.set(key, play)
+  }
+  return map
+}
+
+function buildSubInfoMap(allPlays: Play[]) {
+  const map = new Map<number, { inning: number; description: string }>()
+  for (const play of allPlays) {
+    for (const event of play.playEvents ?? []) {
+      if (event.isSubstitution && event.player?.id && event.details?.description) {
+        if (!map.has(event.player.id)) {
+          map.set(event.player.id, {
+            inning: play.about.inning,
+            description: event.details.description,
+          })
+        }
+      }
+    }
   }
   return map
 }
@@ -241,19 +327,21 @@ function TeamScorecard({ teamBox, halfInning, allPlays, innings, currentPlay }: 
   innings: LinescoreInning[]
   currentPlay?: CurrentPlay
 }) {
-  const slots    = getBattingSlots(teamBox)
-  const playMap  = buildPlayMap(allPlays)
-  const leadoffs = buildLeadoffSet(allPlays)
+  const slots      = getBattingSlots(teamBox)
+  const playMap    = buildPlayMap(allPlays)
+  const leadoffs   = buildLeadoffSet(allPlays)
+  const subInfo    = buildSubInfoMap(allPlays)
   const numInnings = Math.max(9, innings.length)
   const inningNums = Array.from({ length: numInnings }, (_, i) => i + 1)
-  const tb = teamBox.teamStats.batting
-  const side = halfInning === 'top' ? 'away' : 'home'
+  const tb         = teamBox.teamStats.batting
+  const side       = halfInning === 'top' ? 'away' : 'home'
 
   return (
     <div className="sc-overflow">
       <table className="sc-table">
         <thead>
           <tr>
+            <th className="sc-order">#</th>
             <th className="sc-pos">Pos</th>
             <th className="sc-name">Player</th>
             {inningNums.map(n => <th key={n} className="sc-inn-h">{n}</th>)}
@@ -266,64 +354,99 @@ function TeamScorecard({ teamBox, halfInning, allPlays, innings, currentPlay }: 
           </tr>
         </thead>
         <tbody>
-          {slots.map((slot, si) =>
-            slot.map((player, pi) => {
-              const b = player.stats.batting
-              const isSub = pi > 0
-              return (
-                <tr key={player.person.id} className={isSub ? 'sub-row' : ''}>
-                  <td className="sc-pos">{player.position.abbreviation}</td>
-                  <td className="sc-name">
-                    {isSub && <span className="sub-arrow">›</span>}
-                    {player.person.fullName}
-                  </td>
-                  {inningNums.map(n => {
-                    const play = playMap.get(`${halfInning}-${n}-${player.person.id}`)
-                    const isActive = !play
-                      && currentPlay
-                      && !currentPlay.about.isComplete
-                      && currentPlay.about.halfInning === halfInning
-                      && currentPlay.about.inning === n
-                      && currentPlay.matchup.batter.id === player.person.id
+          {slots.map((slot, si) => {
+            if (!slot.length) return null
+            const starter = slot[0]
+            const subs    = slot.slice(1)
 
-                    if (isActive && currentPlay) {
-                      const { balls, strikes } = currentPlay.count
-                      return (
-                        <td key={n} className="sc-inn-cell sc-inn-active">
-                          <svg width="60" height="60" viewBox="0 0 50 50" className="diamond-svg">
-                            <polygon points="25,7 43,25 25,43 7,25" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" strokeWidth="1.5" />
-                            <text x="25" y="24" textAnchor="middle" fontSize="11" fill="#fbbf24"
-                              fontFamily="Helvetica Neue, Arial, sans-serif" fontWeight="700">{balls}-{strikes}</text>
-                            <text x="25" y="36" textAnchor="middle" fontSize="9" fill="#fbbf24"
-                              fontFamily="Helvetica Neue, Arial, sans-serif">AB</text>
-                          </svg>
-                        </td>
-                      )
-                    }
+            return (
+              <tr key={si}>
+                {/* Order number */}
+                <td className="sc-order">{si + 1}</td>
 
-                    if (!play) return <td key={n} className="sc-inn-cell" />
-                    const notation = getNotation(play)
-                    const { pathBases, scored } = traceRunner(player.person.id, play.atBatIndex, allPlays)
-                    const isLeadoff = leadoffs.has(`${halfInning}-${n}-${player.person.id}`)
+                {/* Pos — stacked */}
+                <td className="sc-pos sc-stacked-cell">
+                  <div>{(starter.allPositions ?? [starter.position]).map(p => p.abbreviation).join(' → ')}</div>
+                  {subs.map(sub => (
+                    <div key={sub.person.id} className="sc-sub-pos">
+                      {(sub.allPositions ?? [sub.position]).map(p => p.abbreviation).join(' → ')}
+                    </div>
+                  ))}
+                </td>
+
+                {/* Name — stacked */}
+                <td className="sc-name sc-stacked-cell">
+                  <div className="sc-starter-name">{starter.person.fullName}</div>
+                  {subs.map(sub => {
+                    const info = subInfo.get(sub.person.id)
                     return (
-                      <td key={n} className={`sc-inn-cell${isLeadoff ? ' leadoff' : ''}`} data-tip={play.result.description}>
-                        <Diamond pathBases={pathBases} scored={scored} notation={notation} />
-                      </td>
+                      <div key={sub.person.id} className="sc-sub-name">
+                        {sub.person.fullName}
+                        {info && <span className="sub-inning" title={info.description}> ({info.inning})</span>}
+                      </div>
                     )
                   })}
-                  <td className="sc-stat">{b.atBats ?? ''}</td>
-                  <td className="sc-stat">{b.runs ?? ''}</td>
-                  <td className="sc-stat">{b.hits ?? ''}</td>
-                  <td className="sc-stat">{b.rbi ?? ''}</td>
-                  <td className="sc-stat">{b.baseOnBalls ?? ''}</td>
-                  <td className="sc-stat">{b.strikeOuts ?? ''}</td>
-                </tr>
-              )
-            })
-          )}
+                </td>
+
+                {/* Inning cells — one diamond per inning, for whoever in this slot batted */}
+                {inningNums.map(n => {
+                  let play: Play | undefined
+                  let batterId: number | undefined
+                  for (const p of slot) {
+                    const found = playMap.get(`${halfInning}-${n}-${p.person.id}`)
+                    if (found) { play = found; batterId = p.person.id; break }
+                  }
+
+                  const isActive = !play
+                    && currentPlay
+                    && !currentPlay.about.isComplete
+                    && currentPlay.about.halfInning === halfInning
+                    && currentPlay.about.inning === n
+                    && slot.some(p => p.person.id === currentPlay.matchup.batter.id)
+
+                  if (isActive && currentPlay) {
+                    const { balls, strikes } = currentPlay.count
+                    return (
+                      <td key={n} className="sc-inn-cell sc-inn-active">
+                        <svg width="78" height="78" viewBox="0 0 50 50" className="diamond-svg">
+                          <polygon points="25,7 43,25 25,43 7,25" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" strokeWidth="1.5" />
+                          <text x="25" y="24" textAnchor="middle" fontSize="11" fill="#fbbf24"
+                            fontFamily="Helvetica Neue, Arial, sans-serif" fontWeight="700">{balls}-{strikes}</text>
+                          <text x="25" y="36" textAnchor="middle" fontSize="9" fill="#fbbf24"
+                            fontFamily="Helvetica Neue, Arial, sans-serif">AB</text>
+                        </svg>
+                      </td>
+                    )
+                  }
+
+                  if (!play || !batterId) return <td key={n} className="sc-inn-cell" />
+                  const notation   = getNotation(play)
+                  const { pathBases, scored, stolenBaseSegment, stolenBaseDesc } = traceRunner(batterId, play.atBatIndex, allPlays)
+                  const isLeadoff  = leadoffs.has(`${halfInning}-${n}-${batterId}`)
+                  const outNumber  = getBatterOutNumber(play, batterId)
+                  return (
+                    <td key={n} className={`sc-inn-cell${isLeadoff ? ' leadoff' : ''}`} title={play.result.description}>
+                      <Diamond pathBases={pathBases} scored={scored} notation={notation} outNumber={outNumber} stolenBaseSegment={stolenBaseSegment} stolenBaseDesc={stolenBaseDesc} />
+                    </td>
+                  )
+                })}
+
+                {/* Stats — stacked per player */}
+                {(['atBats', 'runs', 'hits', 'rbi', 'baseOnBalls', 'strikeOuts'] as const).map(stat => (
+                  <td key={stat} className="sc-stat sc-stacked-cell">
+                    <div>{starter.stats.batting[stat] ?? ''}</div>
+                    {subs.map(sub => (
+                      <div key={sub.person.id} className="sc-sub-stat">{sub.stats.batting[stat] ?? ''}</div>
+                    ))}
+                  </td>
+                ))}
+              </tr>
+            )
+          })}
         </tbody>
         <tfoot>
           <tr className="totals-row">
+            <td className="sc-order" />
             <td className="sc-pos" />
             <td className="sc-name">Totals</td>
             {inningNums.map(n => {
@@ -472,7 +595,11 @@ export default function GamePage() {
             <span className="gh-dash">–</span>
             <span>{ls.teams.home.runs}</span>
           </div>
-          <div className="gh-status">{feed.gameData.status.detailedState}</div>
+          <div className="gh-status">
+            {feed.gameData.status.abstractGameCode === 'F' && ls.currentInning && ls.scheduledInnings && ls.currentInning > ls.scheduledInnings
+              ? `Final/${ls.currentInning}`
+              : feed.gameData.status.detailedState}
+          </div>
         </div>
         <div className="gh-team">
           <img src={`https://midfield.mlbstatic.com/v1/team/${feed.gameData.teams.home.id}/spots/96`} alt="" className="gh-logo" />
