@@ -1,0 +1,156 @@
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-h);
+    margin: 0;
+    letter-spacing: 0;
+  }
+
+  input[type='date'] {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text-h);
+  }
+}
+
+.msg {
+  color: var(--text);
+  font-size: 14px;
+  padding: 24px 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.boxscore {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #888;
+  }
+
+  &.live {
+    border-color: #22c55e;
+  }
+
+  &.final {
+    border-color: #6366f1;
+    opacity: 0.85;
+  }
+}
+
+.status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 5px 10px;
+  background: var(--code-bg);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+
+  .live & {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border-bottom-color: #22c55e;
+  }
+
+  .final & {
+    background: rgba(99, 102, 241, 0.08);
+    color: #6366f1;
+    border-bottom-color: #6366f1;
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th, td {
+  padding: 5px 10px;
+  text-align: center;
+  white-space: nowrap;
+  border-left: 1px solid var(--border);
+
+  &:first-child {
+    border-left: none;
+  }
+}
+
+thead th {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+}
+
+tbody tr:first-child {
+  border-bottom: 1px solid var(--border);
+}
+
+tbody td {
+  color: var(--text-h);
+  min-width: 22px;
+  vertical-align: middle;
+}
+
+.team-col {
+  text-align: left;
+  padding-left: 10px;
+  width: 220px;
+}
+
+td.team-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-logo {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.team-name {
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.record {
+  font-size: 11px;
+  color: var(--text);
+}
+
+.total {
+  font-weight: 600;
+}
