@@ -77,6 +77,8 @@
 
 /* ── Linescore ── */
 .ls-wrap {
+  width: fit-content;
+  max-width: 100%;
   overflow-x: auto;
   margin-bottom: 36px;
 }
@@ -84,31 +86,27 @@
 .ls-table {
   border-collapse: collapse;
   font-size: 13px;
-  width: 100%;
 }
 
 .ls-table th,
 .ls-table td {
   padding: 6px 10px;
   text-align: center;
-  border-left: 1px solid var(--border);
+  border: 1px solid var(--border);
   white-space: nowrap;
   color: var(--text-h);
+  font-size: 14px;
 }
-
-.ls-table th:first-child,
-.ls-table td:first-child { border-left: none; }
 
 .ls-table thead th {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text);
   background: var(--code-bg);
-  border-bottom: 1px solid var(--border);
 }
 
+.ls-table tbody td { vertical-align: middle; font-weight: 600; }
 .ls-table tbody tr:first-child { border-bottom: 1px solid var(--border); }
-.ls-table td { vertical-align: middle; }
 
 .ls-team-col { text-align: left !important; min-width: 200px; padding-left: 12px !important; }
 
@@ -116,7 +114,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 500;
+  font-weight: 500 !important;
 }
 
 .ls-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
@@ -158,13 +156,13 @@
 /* ── Scorecard table ── */
 .sc-overflow {
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: clip;
   margin-bottom: 12px;
 }
 
 .sc-table {
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -177,11 +175,11 @@
 }
 
 .sc-table thead th {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
   background: var(--code-bg);
-  padding: 5px 10px;
+  padding: 6px 10px;
 }
 
 .sc-pos {
@@ -195,20 +193,20 @@
 .sc-name {
   text-align: left !important;
   padding: 0 12px;
-  min-width: 160px;
+  min-width: 120px;
   font-weight: 500;
 }
 
 .sc-inn-h {
-  width: 58px;
-  min-width: 58px;
+  width: 68px;
+  min-width: 68px;
   padding: 5px 0 !important;
 }
 
 .sc-inn-cell {
-  width: 58px;
-  min-width: 58px;
-  height: 54px;
+  width: 68px;
+  min-width: 68px;
+  height: 64px;
   padding: 2px 0 !important;
   vertical-align: middle;
 }
@@ -223,7 +221,7 @@
 }
 
 .sc-inn-cell.leadoff {
-  border-top: 2px solid #666;
+  border-top: 1px solid #555;
 }
 
 .sc-inn-cell.leadoff::before {
@@ -233,9 +231,9 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: #444;
+  background: #555;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
 }
 
 /* Tooltip */
@@ -272,10 +270,10 @@
 }
 
 .sc-stat {
-  width: 38px;
+  width: 42px;
   font-weight: 600;
-  font-size: 12px;
-  padding: 0 8px;
+  font-size: 16px;
+  padding: 0 10px;
 }
 
 .sub-row .sc-name {
@@ -302,11 +300,11 @@
   font-weight: 700;
   background: var(--code-bg);
   padding: 5px 8px;
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .runs-cell {
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -315,32 +313,38 @@
   border-collapse: collapse;
   font-size: 12px;
   margin-top: 4px;
+  width: fit-content;
 }
 
 .pitching-table th,
 .pitching-table td {
   border: 1px solid var(--border);
-  padding: 5px 10px;
+  padding: 6px 10px;
   text-align: center;
   color: var(--text-h);
   white-space: nowrap;
+  font-size: 14px;
 }
 
 .pitching-table thead th {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
   background: var(--code-bg);
 }
 
+.pitching-table tbody td {
+  font-weight: 600;
+}
+
 .pt-name {
   text-align: left !important;
   min-width: 180px;
-  font-weight: 500;
+  font-weight: 500 !important;
 }
 
 .pitcher-note {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text);
   margin-left: 8px;
 }

@@ -4,7 +4,7 @@ const app = express()
 
 app.get('/api/schedule', async (req: Request, res: Response) => {
   const date = req.query.date
-  const response = await fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&hydrate=linescore&date=${date}`)
+  const response = await fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&hydrate=linescore,decisions&date=${date}`)
   const data = await response.json()
   res.json(data)
 })

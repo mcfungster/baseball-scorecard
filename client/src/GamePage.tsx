@@ -182,12 +182,12 @@ function Diamond({ pathBases, scored, notation }: { pathBases: string[]; scored:
   const diamondFill = scored ? 'rgba(74,222,128,0.12)' : 'none'
 
   return (
-    <svg width="50" height="50" viewBox="0 0 50 50" className="diamond-svg">
+    <svg width="60" height="60" viewBox="0 0 50 50" className="diamond-svg">
       <polygon points="25,7 43,25 25,43 7,25" fill={diamondFill} stroke="#2a2a2a" strokeWidth="1.2" />
       {segments.map(([a, b], i) => (
         <line key={i} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" />
       ))}
-      <text x="25" y="29" textAnchor="middle" fontSize={notation.length > 3 ? 7 : 8.5} fill={textColor}
+      <text x="25" y="29" textAnchor="middle" fontSize={notation.length > 3 ? 9 : 11} fill={textColor}
         fontFamily="Helvetica Neue, Arial, sans-serif" fontWeight="700">
         {notation}
       </text>
@@ -290,11 +290,11 @@ function TeamScorecard({ teamBox, halfInning, allPlays, innings, currentPlay }: 
                       const { balls, strikes } = currentPlay.count
                       return (
                         <td key={n} className="sc-inn-cell sc-inn-active">
-                          <svg width="50" height="50" viewBox="0 0 50 50" className="diamond-svg">
+                          <svg width="60" height="60" viewBox="0 0 50 50" className="diamond-svg">
                             <polygon points="25,7 43,25 25,43 7,25" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" strokeWidth="1.5" />
-                            <text x="25" y="24" textAnchor="middle" fontSize="9" fill="#fbbf24"
+                            <text x="25" y="24" textAnchor="middle" fontSize="11" fill="#fbbf24"
                               fontFamily="Helvetica Neue, Arial, sans-serif" fontWeight="700">{balls}-{strikes}</text>
-                            <text x="25" y="35" textAnchor="middle" fontSize="7.5" fill="#fbbf24"
+                            <text x="25" y="36" textAnchor="middle" fontSize="9" fill="#fbbf24"
                               fontFamily="Helvetica Neue, Arial, sans-serif">AB</text>
                           </svg>
                         </td>

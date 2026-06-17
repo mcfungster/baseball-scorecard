@@ -10,10 +10,10 @@ interface LinescoreInning {
 
 interface Linescore {
   currentInning?: number
+  scheduledInnings?: number
   currentInningOrdinal?: string
   inningState?: string
   isTopInning?: boolean
-  scheduledInnings?: number
   innings?: LinescoreInning[]
   teams?: {
     home: { runs: number; hits: number; errors: number }
@@ -37,6 +37,11 @@ interface Game {
   }
   teams: { away: TeamInfo; home: TeamInfo }
   linescore?: Linescore
+  decisions?: {
+    winner?: { fullName: string }
+    loser?: { fullName: string }
+    save?: { fullName: string }
+  }
 }
 
 function formatTime(dateStr: string) {
@@ -47,23 +52,41 @@ function formatTime(dateStr: string) {
   })
 }
 
+const INTERRUPTED = ['Delayed', 'Delayed Start', 'Suspended', 'Postponed']
+
+function isInterrupted(game: Game) {
+  return INTERRUPTED.some(s => game.status.detailedState.startsWith(s))
+}
+
 function statusLabel(game: Game) {
-  const code = game.status.abstractGameCode
+  const { abstractGameCode, detailedState } = game.status
   const ls = game.linescore
-  if (code === 'F') return 'Final'
-  if (code === 'L' && ls?.currentInningOrdinal) {
-    return `${ls.inningState} ${ls.currentInningOrdinal}`
+  if (abstractGameCode === 'F') {
+    const inn = ls?.currentInning ?? 0
+    const sched = ls?.scheduledInnings ?? 9
+    return inn > sched ? `Final/${inn}` : 'Final'
   }
-  return formatTime(game.gameDate)
+  if (abstractGameCode === 'L') {
+    if (isInterrupted({ status: { abstractGameCode, detailedState } } as Game)) {
+      return ls?.currentInningOrdinal
+        ? `${detailedState} – ${ls.inningState} ${ls.currentInningOrdinal}`
+        : detailedState
+    }
+    if (ls?.currentInningOrdinal) return `${ls.inningState} ${ls.currentInningOrdinal}`
+  }
+  return detailedState !== 'Scheduled' && detailedState !== 'Preview'
+    ? detailedState
+    : formatTime(game.gameDate)
 }
 
 function Boxscore({ game }: { game: Game }) {
   const ls = game.linescore
-  const isLive = game.status.abstractGameCode === 'L'
+  const isLive = game.status.abstractGameCode === 'L' && !isInterrupted(game)
   const isFinal = game.status.abstractGameCode === 'F'
   const isPreview = game.status.abstractGameCode === 'P'
+  const interrupted = isInterrupted(game)
 
-  const cls = `boxscore${isLive ? ' live' : isFinal ? ' final' : ''}`
+  const cls = `boxscore${isLive ? ' live' : isFinal ? ' final' : interrupted ? ' interrupted' : ''}`
 
   return (
     <Link to={`/game/${game.gamePk}`} className={cls}>
@@ -100,8 +123,21 @@ function Boxscore({ game }: { game: Game }) {
           })}
         </tbody>
       </table>
+      <div className="decisions">
+        {isFinal && game.decisions && <>
+          {game.decisions.winner && <span><span className="dec-label">W</span> {game.decisions.winner.fullName}</span>}
+          {game.decisions.loser  && <span><span className="dec-label">L</span> {game.decisions.loser.fullName}</span>}
+          {game.decisions.save   && <span><span className="dec-label">S</span> {game.decisions.save.fullName}</span>}
+        </>}
+      </div>
     </Link>
   )
+}
+
+function shiftDate(date: string, days: number) {
+  const d = new Date(date + 'T12:00:00')
+  d.setDate(d.getDate() + days)
+  return d.toLocaleDateString('en-CA')
 }
 
 export default function App() {
@@ -122,7 +158,14 @@ export default function App() {
     <div className="app">
       <header>
         <h1>MLB Scores</h1>
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+        <div className="date-nav">
+          <button onClick={() => setDate(d => shiftDate(d, -1))}>‹</button>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          <button onClick={() => setDate(d => shiftDate(d, 1))}>›</button>
+        </div>
+        {date !== today && (
+          <button className="today-btn" onClick={() => setDate(today)}>Today</button>
+        )}
       </header>
       <main>
         {loading && <p className="msg">Loading...</p>}
