@@ -567,8 +567,13 @@ export default function GamePage() {
   useEffect(() => {
     fetch(`/api/game/${gamePk}`)
       .then(r => r.json())
-      .then(setFeed)
+      .then(data => {
+        setFeed(data)
+        const { away, home } = data.gameData.teams
+        document.title = `${away.name} vs ${home.name}`
+      })
       .finally(() => setLoading(false))
+    return () => { document.title = 'Baseball Scorecard' }
   }, [gamePk])
 
   if (loading) return <div className="game-page"><p className="page-msg">Loading…</p></div>
