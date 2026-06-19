@@ -163,6 +163,7 @@
   border-collapse: collapse;
   font-size: 14px;
   white-space: nowrap;
+  table-layout: fixed;
 }
 
 .sc-table th,
@@ -204,23 +205,24 @@
 .sc-name {
   text-align: left !important;
   padding: 0 12px;
-  min-width: 120px;
-  max-width: 140px;
+  width: 250px;
   font-weight: 500;
+  overflow: hidden;
 }
 
 .sc-inn-h {
-  width: 84px;
-  min-width: 84px;
+  width: 80px;
+  min-width: 80px;
   padding: 6px 0 !important;
 }
 
 .sc-inn-cell {
-  width: 84px;
-  min-width: 84px;
-  height: 84px;
+  width: 80px;
+  min-width: 80px;
+  height: 80px;
   padding: 2px 0 !important;
   vertical-align: middle;
+  position: relative;
 }
 
 .diamond-svg {
@@ -293,6 +295,20 @@
   color: var(--text);
   margin-left: 3px;
   cursor: default;
+}
+
+.player-link {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  opacity: 0.35;
+  text-decoration: none;
+  vertical-align: middle;
+  transition: opacity 0.15s;
+
+  &:hover { opacity: 1; }
+
+  img { display: block; border-radius: 2px; }
 }
 
 .totals-row td {

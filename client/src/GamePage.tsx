@@ -320,12 +320,40 @@ function getBattingSlots(teamBox: TeamBoxscore): PlayerStats[][] {
   return slots
 }
 
-function TeamScorecard({ teamBox, halfInning, allPlays, innings, currentPlay }: {
+const FAVICON = (domain: string) =>
+  `https://www.google.com/s2/favicons?domain=${domain}&sz=16`
+
+function PlayerLinks({ id, links }: { id: number; links: Record<string, { b?: string; f?: string }> }) {
+  const entry = links[String(id)]
+  return (
+    <>
+      <a href={`https://baseballsavant.mlb.com/savant-player/${id}`}
+        target="_blank" rel="noreferrer" className="player-link" title="Baseball Savant">
+        <img src={FAVICON('baseballsavant.mlb.com')} width="12" height="12" alt="Savant" />
+      </a>
+      {entry?.f && (
+        <a href={`https://www.fangraphs.com/statss.aspx?playerid=${entry.f}`}
+          target="_blank" rel="noreferrer" className="player-link" title="FanGraphs">
+          <img src={FAVICON('fangraphs.com')} width="12" height="12" alt="FanGraphs" />
+        </a>
+      )}
+      {entry?.b && (
+        <a href={`https://www.baseball-reference.com/players/${entry.b[0]}/${entry.b}.shtml`}
+          target="_blank" rel="noreferrer" className="player-link" title="Baseball Reference">
+          <img src={FAVICON('baseball-reference.com')} width="12" height="12" alt="BBRef" />
+        </a>
+      )}
+    </>
+  )
+}
+
+function TeamScorecard({ teamBox, halfInning, allPlays, innings, currentPlay, links }: {
   teamBox: TeamBoxscore
   halfInning: 'top' | 'bottom'
   allPlays: Play[]
   innings: LinescoreInning[]
   currentPlay?: CurrentPlay
+  links: Record<string, { b?: string; f?: string }>
 }) {
   const slots      = getBattingSlots(teamBox)
   const playMap    = buildPlayMap(allPlays)
@@ -376,13 +404,17 @@ function TeamScorecard({ teamBox, halfInning, allPlays, innings, currentPlay }: 
 
                 {/* Name — stacked */}
                 <td className="sc-name sc-stacked-cell">
-                  <div className="sc-starter-name">{starter.person.fullName}</div>
+                  <div className="sc-starter-name">
+                    {starter.person.fullName}
+                    <PlayerLinks id={starter.person.id} links={links} />
+                  </div>
                   {subs.map(sub => {
                     const info = subInfo.get(sub.person.id)
                     return (
                       <div key={sub.person.id} className="sc-sub-name">
                         {sub.person.fullName}
                         {info && <span className="sub-inning" title={info.description}> ({info.inning})</span>}
+                        <PlayerLinks id={sub.person.id} links={links} />
                       </div>
                     )
                   })}
@@ -563,14 +595,30 @@ export default function GamePage() {
   const { gamePk } = useParams<{ gamePk: string }>()
   const [feed, setFeed] = useState<GameFeed | null>(null)
   const [loading, setLoading] = useState(true)
+  const [links, setLinks] = useState<Record<string, { b?: string; f?: string }>>({})
 
   useEffect(() => {
     fetch(`/api/game/${gamePk}`)
       .then(r => r.json())
-      .then(data => {
+      .then((data: GameFeed) => {
         setFeed(data)
         const { away, home } = data.gameData.teams
         document.title = `${away.name} vs ${home.name}`
+
+        // Collect all player IDs in this game
+        const ids = new Set<string>()
+        for (const side of [data.liveData.boxscore.teams.away, data.liveData.boxscore.teams.home]) {
+          for (const id of [...side.batters, ...side.pitchers]) ids.add(String(id))
+        }
+
+        // Fetch link lookup and filter to just these players
+        fetch('/playerLinks.json')
+          .then(r => r.json())
+          .then((all: Record<string, { b?: string; f?: string }>) => {
+            const filtered: Record<string, { b?: string; f?: string }> = {}
+            for (const id of ids) if (all[id]) filtered[id] = all[id]
+            setLinks(filtered)
+          })
       })
       .finally(() => setLoading(false))
     return () => { document.title = 'Baseball Scorecard' }
@@ -620,7 +668,7 @@ export default function GamePage() {
             <img src={`https://midfield.mlbstatic.com/v1/team/${teamBox.team.id}/spots/96`} alt="" className="th-logo" />
             {teamBox.team.name}
           </h2>
-          <TeamScorecard teamBox={teamBox} halfInning={halfInning} allPlays={allPlays} innings={innings} currentPlay={currentPlay} />
+          <TeamScorecard teamBox={teamBox} halfInning={halfInning} allPlays={allPlays} innings={innings} currentPlay={currentPlay} links={links} />
           <PitchingTable teamBox={teamBox} />
         </section>
       ))}
