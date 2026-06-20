@@ -73,7 +73,8 @@ export default function GamePage() {
         <Link to="/" className="back-link">← Scores</Link>
         <select className="refresh-select" value={refreshInterval} onChange={e => setRefreshInterval(Number(e.target.value))}>
           <option value={0}>Auto-refresh off</option>
-          <option value={5000}>Every 5s</option>
+          <option value={15000}>Every 15s</option>
+          <option value={30000}>Every 30s</option>
         </select>
       </div>
 
