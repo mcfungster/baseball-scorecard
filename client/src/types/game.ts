@@ -29,7 +29,12 @@ export interface PlayEvent {
 export interface Play {
   result: { event: string; eventType: string; description?: string; rbi: number; isOut: boolean }
   about: { inning: number; halfInning: string }
-  matchup: { batter: Person }
+  matchup: {
+    batter: Person
+    postOnFirst?: Person | null
+    postOnSecond?: Person | null
+    postOnThird?: Person | null
+  }
   runners: Runner[]
   playEvents?: PlayEvent[]
   atBatIndex: number
@@ -59,13 +64,18 @@ export interface TeamBoxscore {
 
 export interface LinescoreInning {
   num: number
-  home: { runs: number; hits: number; errors: number }
-  away: { runs: number; hits: number; errors: number }
+  home: { runs?: number; hits: number; errors: number }
+  away: { runs?: number; hits: number; errors: number }
 }
 
 export interface CurrentPlay {
   about: { inning: number; halfInning: string; isComplete: boolean }
-  matchup: { batter: Person }
+  matchup: {
+    batter: Person
+    postOnFirst?: Person | null
+    postOnSecond?: Person | null
+    postOnThird?: Person | null
+  }
   count: { balls: number; strikes: number; outs: number }
 }
 
@@ -81,8 +91,12 @@ export interface GameFeed {
       inningState?: string; isTopInning?: boolean
       scheduledInnings: number; innings: LinescoreInning[]
       teams: { home: { runs: number; hits: number; errors: number }; away: { runs: number; hits: number; errors: number } }
+      balls?: number; strikes?: number; outs?: number
+      defense?: { pitcher?: Person }
+      offense?: { batter?: Person }
     }
     boxscore: { teams: { away: TeamBoxscore; home: TeamBoxscore } }
+    decisions?: { winner?: Person; loser?: Person; save?: Person }
   }
 }
 

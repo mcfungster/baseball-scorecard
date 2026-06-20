@@ -100,8 +100,9 @@ function Boxscore({ game, pitcherInfo }: { game: Game; pitcherInfo: Record<numbe
 
   return (
     <Link to={`/game/${game.gamePk}`} className={cls}>
-      <div className="status">{statusLabel(game)}</div>
       {isPreview ? (
+        <>
+        <div className="status">{statusLabel(game)}</div>
         <div className="preview-teams">
           {(['away', 'home'] as const).map(side => {
             const team = game.teams[side]
@@ -123,11 +124,12 @@ function Boxscore({ game, pitcherInfo }: { game: Game; pitcherInfo: Record<numbe
             )
           })}
         </div>
+        </>
       ) : (
         <table>
           <thead>
             <tr>
-              <th className="team-col" />
+              <th className="team-col status">{statusLabel(game)}</th>
               <th>R</th>
               <th>H</th>
               <th>E</th>

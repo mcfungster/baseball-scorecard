@@ -62,9 +62,13 @@ export default function GamePage() {
             <span>{ls.teams.home.runs}</span>
           </div>
           <div className="gh-status">
-            {feed.gameData.status.abstractGameCode === 'F' && ls.currentInning && ls.scheduledInnings && ls.currentInning > ls.scheduledInnings
-              ? `Final/${ls.currentInning}`
-              : feed.gameData.status.detailedState}
+            {feed.gameData.status.abstractGameCode === 'F'
+              ? (ls.currentInning && ls.scheduledInnings && ls.currentInning > ls.scheduledInnings
+                  ? `Final/${ls.currentInning}`
+                  : 'Final')
+              : feed.gameData.status.abstractGameCode === 'L' && ls.inningState && ls.currentInningOrdinal
+                ? `${ls.inningState?.replace('Bottom', 'Bot')} ${ls.currentInningOrdinal}`
+                : feed.gameData.status.detailedState}
           </div>
         </div>
         <div className="gh-team">
@@ -73,7 +77,11 @@ export default function GamePage() {
         </div>
       </div>
 
-      <Linescore feed={feed} />
+      <Linescore feed={feed} decisions={feed.liveData.decisions} boxscorePlayers={{
+        ...feed.liveData.boxscore.teams.away.players,
+        ...feed.liveData.boxscore.teams.home.players,
+      }} />
+
       <div className="game-links">
         <a href={`https://baseballsavant.mlb.com/gamefeed?gamePk=${gamePk}`}
           target="_blank" rel="noreferrer" className="game-ext-link">
