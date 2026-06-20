@@ -1,4 +1,4 @@
-import type { GameFeed, Play, Person } from '../types/game'
+import type { GameFeed, Person } from '../types/game'
 
 interface Decisions { winner?: Person; loser?: Person; save?: Person }
 
@@ -24,20 +24,6 @@ function BaseDiamond({ first, second, third }: { first: boolean; second: boolean
   )
 }
 
-function getRunners(allPlays: Play[]) {
-  for (let i = allPlays.length - 1; i >= 0; i--) {
-    const m = allPlays[i].matchup
-    if ('postOnFirst' in m || 'postOnSecond' in m || 'postOnThird' in m) {
-      return {
-        first:  !!m.postOnFirst,
-        second: !!m.postOnSecond,
-        third:  !!m.postOnThird,
-      }
-    }
-  }
-  return { first: false, second: false, third: false }
-}
-
 export default function Linescore({ feed, decisions, boxscorePlayers }: {
   feed: GameFeed
   decisions?: Decisions
@@ -47,7 +33,11 @@ export default function Linescore({ feed, decisions, boxscorePlayers }: {
   const cols = Array.from({ length: Math.max(ls.scheduledInnings, ls.innings.length) }, (_, i) => i + 1)
   const isLive  = feed.gameData.status.abstractGameCode === 'L'
   const isFinal = feed.gameData.status.abstractGameCode === 'F'
-  const runners = isLive ? getRunners(feed.liveData.plays.allPlays) : null
+  const runners = isLive && ls.offense ? {
+    first:  !!ls.offense.first,
+    second: !!ls.offense.second,
+    third:  !!ls.offense.third,
+  } : null
 
   return (
     <div className="ls-wrap">

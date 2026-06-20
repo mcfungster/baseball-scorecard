@@ -93,7 +93,7 @@ export interface GameFeed {
       teams: { home: { runs: number; hits: number; errors: number }; away: { runs: number; hits: number; errors: number } }
       balls?: number; strikes?: number; outs?: number
       defense?: { pitcher?: Person }
-      offense?: { batter?: Person }
+      offense?: { batter?: Person; first?: Person; second?: Person; third?: Person }
     }
     boxscore: { teams: { away: TeamBoxscore; home: TeamBoxscore } }
     decisions?: { winner?: Person; loser?: Person; save?: Person }
