@@ -194,7 +194,7 @@ export default function App() {
   useEffect(() => {
     setLoading(true)
     setPitcherInfo({})
-    fetch(`/api/schedule?date=${date}`)
+    fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&hydrate=linescore,decisions,probablePitcher&date=${date}`)
       .then(r => r.json())
       .then(data => {
         const games: Game[] = data.dates?.[0]?.games ?? []

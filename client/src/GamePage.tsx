@@ -13,10 +13,16 @@ export default function GamePage() {
   const [links, setLinks] = useState<Record<string, { b?: string; f?: string }>>({})
 
   useEffect(() => {
-    fetch(`/api/game/${gamePk}`)
-      .then(r => r.json())
-      .then((data: GameFeed) => {
-        setFeed(data)
+    async function load() {
+      try {
+        const [data, all]: [GameFeed, Record<string, { b?: string; f?: string }>] =
+            await Promise.all(
+                [
+                  fetch(`https://statsapi.mlb.com/api/v1.1/game/${gamePk}/feed/live`).then(r => r.json()),
+                  fetch(`${import.meta.env.BASE_URL}playerLinks.json`).then(r => r.json()),
+                ]
+            )
+
         const { away, home } = data.gameData.teams
         document.title = `${away.name} vs ${home.name}`
 
@@ -25,15 +31,17 @@ export default function GamePage() {
           for (const id of [...side.batters, ...side.pitchers]) ids.add(String(id))
         }
 
-        fetch('/playerLinks.json')
-          .then(r => r.json())
-          .then((all: Record<string, { b?: string; f?: string }>) => {
-            const filtered: Record<string, { b?: string; f?: string }> = {}
-            for (const id of ids) if (all[id]) filtered[id] = all[id]
-            setLinks(filtered)
-          })
-      })
-      .finally(() => setLoading(false))
+        const filtered: Record<string, { b?: string; f?: string }> = {}
+        for (const id of ids) if (all[id]) filtered[id] = all[id]
+
+        setFeed(data)
+        setLinks(filtered)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
     return () => { document.title = 'Baseball Scorecard' }
   }, [gamePk])
 

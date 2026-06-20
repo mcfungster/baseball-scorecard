@@ -78,9 +78,10 @@ export function traceRunner(batterId: number, atBatIndex: number, allPlays: Play
 
   const initialPath = getBasePath(null, own.movement.end)
   if (own.movement.end === 'score') return { pathBases: initialPath, scored: true }
+  if (!own.movement.end) return { pathBases: [], scored: false }
 
   const pathBases = [...initialPath]
-  let cur = own.movement.end
+  let cur: string = own.movement.end
   let stolenBaseSegment: [string, string] | undefined
   let stolenBaseDesc: string | undefined
 

@@ -1,0 +1,116 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    - cron: '0 8 * * *'   # daily at 8am UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      needed: ${{ steps.result.outputs.needed }}
+      sha: ${{ steps.chadwick.outputs.sha }}
+    steps:
+      - name: Get Chadwick latest SHA
+        id: chadwick
+        run: |
+          SHA=$(curl -s "https://api.github.com/repos/chadwickbureau/register/commits?per_page=1" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['sha'])")
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+
+      - name: Restore deployment cache
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .chadwick-cache
+          key: chadwick-${{ steps.chadwick.outputs.sha }}
+
+      - name: Determine if deploy needed
+        id: result
+        run: |
+          if [[ "${{ steps.cache.outputs.cache-hit }}" == "true" && "${{ github.event_name }}" == "schedule" ]]; then
+            echo "needed=false" >> $GITHUB_OUTPUT
+          else
+            echo "needed=true" >> $GITHUB_OUTPUT
+          fi
+
+  deploy:
+    needs: check
+    if: needs.check.outputs.needed == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build playerLinks.json from Chadwick + MLB active roster
+        run: |
+          python3 - <<'EOF'
+          import urllib.request, csv, json, io
+          from datetime import datetime
+
+          base = 'https://raw.githubusercontent.com/chadwickbureau/register/master/data/people-{}.csv'
+          lookup = {}
+          for s in '0123456789abcdef':
+              with urllib.request.urlopen(base.format(s)) as r:
+                  text = r.read().decode('utf-8')
+              reader = csv.DictReader(io.StringIO(text))
+              for row in reader:
+                  mlb   = row.get('key_mlbam', '').strip()
+                  bbref = row.get('key_bbref', '').strip()
+                  fg    = row.get('key_fangraphs', '').strip()
+                  if mlb and (bbref or fg):
+                      entry = {}
+                      if bbref: entry['b'] = bbref
+                      if fg:    entry['f'] = fg
+                      lookup[mlb] = entry
+
+          season = datetime.now().year
+          with urllib.request.urlopen(f'https://statsapi.mlb.com/api/v1/sports/1/players?season={season}') as r:
+              people = json.load(r)['people']
+          active = {str(p['id']) for p in people}
+          filtered = {k: v for k, v in lookup.items() if k in active}
+
+          with open('client/public/playerLinks.json', 'w') as f:
+              json.dump(filtered, f, separators=(',', ':'))
+          print(f'Written {len(filtered)} entries')
+          EOF
+
+      - name: Install and build
+        run: cd client && npm ci && npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: client/dist
+
+      - uses: actions/deploy-pages@v4
+        id: deployment
+
+      - name: Save Chadwick SHA to cache
+        run: mkdir -p .chadwick-cache && echo "${{ needs.check.outputs.sha }}" > .chadwick-cache/sha
+
+      - uses: actions/cache/save@v4
+        with:
+          path: .chadwick-cache
+          key: chadwick-${{ needs.check.outputs.sha }}
