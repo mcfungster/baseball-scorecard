@@ -14,11 +14,13 @@ export default function GamePage() {
   const [refreshInterval, setRefreshInterval] = useState<number>(0)
   const [tick, setTick] = useState(0)
 
+  const isFinal = feed?.gameData.status.abstractGameCode === 'F'
+
   useEffect(() => {
-    if (!refreshInterval) return
+    if (!refreshInterval || isFinal) return
     const id = setInterval(() => setTick(t => t + 1), refreshInterval)
     return () => clearInterval(id)
-  }, [refreshInterval])
+  }, [refreshInterval, isFinal])
 
   useEffect(() => {
     const isRefresh = tick > 0
@@ -71,11 +73,13 @@ export default function GamePage() {
     <div className="game-page">
       <div className="game-nav">
         <Link to="/" className="back-link">← Scores</Link>
-        <select className="refresh-select" value={refreshInterval} onChange={e => setRefreshInterval(Number(e.target.value))}>
-          <option value={0}>Auto-refresh off</option>
-          <option value={15000}>Every 15s</option>
-          <option value={30000}>Every 30s</option>
-        </select>
+        {!isFinal && (
+          <select className="refresh-select" value={refreshInterval} onChange={e => setRefreshInterval(Number(e.target.value))}>
+            <option value={0}>Auto-refresh off</option>
+            <option value={15000}>Every 15s</option>
+            <option value={30000}>Every 30s</option>
+          </select>
+        )}
       </div>
 
       <div className="game-header">
