@@ -83,10 +83,11 @@ header {
   overflow: hidden;
   cursor: pointer;
 
-  &:hover { border-color: #888; }
+  &:not(.preview):hover { border-color: #888; }
   &.live { border-color: #22c55e; }
   &.final { border-color: #6366f1; opacity: 0.85; }
   &.interrupted { border-color: #f59e0b; }
+  &.preview { cursor: default; }
 }
 
 .status {

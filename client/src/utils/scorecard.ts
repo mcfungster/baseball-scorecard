@@ -51,6 +51,7 @@ export function getNotation(play: Play): string {
     case 'sac_fly':         return 'SF'
     case 'field_error':     return 'E'
     case 'catcher_interf':  return 'CI'
+    case 'fielders_choice': return 'FC'
     case 'force_out': {
       const br = play.runners.find(r => r.details.runner.id === id && r.movement.start === null)
       return br && !br.movement.isOut ? 'FC' : getOutCredits(play.runners, id, getTrajectory(play))

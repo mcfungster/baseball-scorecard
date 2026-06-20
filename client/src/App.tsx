@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import './App.css'
 
 interface LinescoreInning {
@@ -96,80 +96,81 @@ function Boxscore({ game, pitcherInfo }: { game: Game; pitcherInfo: Record<numbe
   const isPreview = game.status.abstractGameCode === 'P'
   const interrupted = isInterrupted(game)
 
-  const cls = `boxscore${isLive ? ' live' : isFinal ? ' final' : interrupted ? ' interrupted' : ''}`
+  const cls = `boxscore${isLive ? ' live' : isFinal ? ' final' : interrupted ? ' interrupted' : isPreview ? ' preview' : ''}`
 
-  return (
-    <Link to={`/game/${game.gamePk}`} className={cls}>
-      {isPreview ? (
-        <>
-        <div className="status">{statusLabel(game)}</div>
-        <div className="preview-teams">
+  const body = isPreview ? (
+    <>
+      <div className="status">{statusLabel(game)}</div>
+      <div className="preview-teams">
+        {(['away', 'home'] as const).map(side => {
+          const team = game.teams[side]
+          return (
+            <div key={side} className="preview-team">
+              <img src={`https://midfield.mlbstatic.com/v1/team/${team.team.id}/spots/96`} alt={team.team.name} className="team-logo" />
+              <span className="team-name">{team.team.name}</span>
+              <span className="record">{team.leagueRecord.wins}–{team.leagueRecord.losses}</span>
+              {team.probablePitcher && (() => {
+                const info = pitcherInfo[team.probablePitcher.id]
+                return (
+                  <span className="probable-pitcher">
+                    <span>{team.probablePitcher.fullName}{info && ` (${info.hand})`}</span>
+                    {info && <span className="pitcher-stats">{info.wins}-{info.losses}, {info.era} ERA</span>}
+                  </span>
+                )
+              })()}
+            </div>
+          )
+        })}
+      </div>
+      <div className="preview-spacer" />
+    </>
+  ) : (
+    <>
+      <table>
+        <thead>
+          <tr>
+            <th className="team-col status">{statusLabel(game)}</th>
+            <th>R</th>
+            <th>H</th>
+            <th>E</th>
+          </tr>
+        </thead>
+        <tbody>
           {(['away', 'home'] as const).map(side => {
             const team = game.teams[side]
+            const totals = ls?.teams?.[side]
             return (
-              <div key={side} className="preview-team">
-                <img src={`https://midfield.mlbstatic.com/v1/team/${team.team.id}/spots/96`} alt={team.team.name} className="team-logo" />
-                <span className="team-name">{team.team.name}</span>
-                <span className="record">{team.leagueRecord.wins}–{team.leagueRecord.losses}</span>
-                {team.probablePitcher && (() => {
-                  const info = pitcherInfo[team.probablePitcher.id]
-                  return (
-                    <span className="probable-pitcher">
-                      <span>{team.probablePitcher.fullName}{info && ` (${info.hand})`}</span>
-                      {info && <span className="pitcher-stats">{info.wins}-{info.losses}, {info.era} ERA</span>}
-                    </span>
-                  )
-                })()}
-              </div>
+              <tr key={side}>
+                <td className="team-col">
+                  <img src={`https://midfield.mlbstatic.com/v1/team/${team.team.id}/spots/96`} alt={team.team.name} className="team-logo" />
+                  <span className="team-name">{team.team.name}</span>
+                  <span className="record">{team.leagueRecord.wins}–{team.leagueRecord.losses}</span>
+                </td>
+                <td className="total">{totals?.runs ?? team.score ?? ''}</td>
+                <td className="total">{totals?.hits ?? ''}</td>
+                <td className="total">{totals?.errors ?? ''}</td>
+              </tr>
             )
           })}
-        </div>
-        </>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th className="team-col status">{statusLabel(game)}</th>
-              <th>R</th>
-              <th>H</th>
-              <th>E</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(['away', 'home'] as const).map(side => {
-              const team = game.teams[side]
-              const totals = ls?.teams?.[side]
-              return (
-                <tr key={side}>
-                  <td className="team-col">
-                    <img src={`https://midfield.mlbstatic.com/v1/team/${team.team.id}/spots/96`} alt={team.team.name} className="team-logo" />
-                    <span className="team-name">{team.team.name}</span>
-                    <span className="record">{team.leagueRecord.wins}–{team.leagueRecord.losses}</span>
-                  </td>
-                  <td className="total">{totals?.runs ?? team.score ?? ''}</td>
-                  <td className="total">{totals?.hits ?? ''}</td>
-                  <td className="total">{totals?.errors ?? ''}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      )}
-      {!isPreview ? (
-        <div className="decisions">
-          {isFinal && game.decisions && <>
-            {game.decisions.winner && <span><span className="dec-label">W</span> {game.decisions.winner.fullName}</span>}
-            {game.decisions.loser  && <span><span className="dec-label">L</span> {game.decisions.loser.fullName}</span>}
-            {game.decisions.save   && <span><span className="dec-label">S</span> {game.decisions.save.fullName}</span>}
-          </>}
-          {isLive && <>
-            {ls?.defense?.pitcher && <span><span className="dec-label">P</span> {ls.defense.pitcher.fullName}</span>}
-            {ls?.offense?.batter  && <span><span className="dec-label">AB</span> {ls.offense.batter.fullName}</span>}
-          </>}
-        </div>
-      ) : <div className="preview-spacer" />}
-    </Link>
+        </tbody>
+      </table>
+      <div className="decisions">
+        {isFinal && game.decisions && <>
+          {game.decisions.winner && <span><span className="dec-label">W</span> {game.decisions.winner.fullName}</span>}
+          {game.decisions.loser  && <span><span className="dec-label">L</span> {game.decisions.loser.fullName}</span>}
+          {game.decisions.save   && <span><span className="dec-label">S</span> {game.decisions.save.fullName}</span>}
+        </>}
+        {isLive && <>
+          {ls?.defense?.pitcher && <span><span className="dec-label">P</span> {ls.defense.pitcher.fullName}</span>}
+          {ls?.offense?.batter  && <span><span className="dec-label">AB</span> {ls.offense.batter.fullName}</span>}
+        </>}
+      </div>
+    </>
   )
+
+  return isPreview
+    ? <div className={cls}>{body}</div>
+    : <Link to={`/game/${game.gamePk}`} className={cls}>{body}</Link>
 }
 
 function shiftDate(date: string, days: number) {
@@ -180,7 +181,12 @@ function shiftDate(date: string, days: number) {
 
 export default function App() {
   const today = new Date().toLocaleDateString('en-CA')
-  const [date, setDate] = useState(today)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const date = searchParams.get('date') ?? today
+  const setDate = (d: string | ((prev: string) => string)) => {
+    const next = typeof d === 'function' ? d(date) : d
+    setSearchParams(next === today ? {} : { date: next })
+  }
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [pitcherInfo, setPitcherInfo] = useState<Record<number, PitcherInfo>>({})

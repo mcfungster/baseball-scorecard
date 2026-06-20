@@ -88,6 +88,11 @@ export default function GamePage() {
           <img src="https://www.google.com/s2/favicons?domain=baseballsavant.mlb.com&sz=14" width="12" height="12" alt="" />
           Baseball Savant Gamefeed
         </a>
+        <a href={`https://www.mlb.com/gameday/${gamePk}`}
+          target="_blank" rel="noreferrer" className="game-ext-link">
+          <img src="https://www.google.com/s2/favicons?domain=mlb.com&sz=14" width="12" height="12" alt="" />
+          MLB.com Gameday
+        </a>
       </div>
 
       {[{ teamBox: away, halfInning: 'top' as const }, { teamBox: home, halfInning: 'bottom' as const }].map(({ teamBox, halfInning }) => (
