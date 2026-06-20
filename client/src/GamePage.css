@@ -5,12 +5,30 @@
   font-family: 'Helvetica Neue', Arial, sans-serif;
 }
 
+.game-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.refresh-select {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  &:hover { border-color: #888; }
+}
+
 .back-link {
   display: inline-block;
   font-size: 13px;
   color: var(--text);
   text-decoration: none;
-  margin-bottom: 20px;
   &:hover { color: var(--text-h); }
 }
 

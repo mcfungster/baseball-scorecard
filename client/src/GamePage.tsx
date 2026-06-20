@@ -11,17 +11,30 @@ export default function GamePage() {
   const [feed, setFeed] = useState<GameFeed | null>(null)
   const [loading, setLoading] = useState(true)
   const [links, setLinks] = useState<Record<string, { b?: string; f?: string }>>({})
+  const [refreshInterval, setRefreshInterval] = useState<number>(0)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
+    if (!refreshInterval) return
+    const id = setInterval(() => setTick(t => t + 1), refreshInterval)
+    return () => clearInterval(id)
+  }, [refreshInterval])
+
+  useEffect(() => {
+    const isRefresh = tick > 0
+
     async function load() {
       try {
-        const [data, all]: [GameFeed, Record<string, { b?: string; f?: string }>] =
-            await Promise.all(
-                [
-                  fetch(`https://statsapi.mlb.com/api/v1.1/game/${gamePk}/feed/live`).then(r => r.json()),
-                  fetch(`${import.meta.env.BASE_URL}playerLinks.json`).then(r => r.json()),
-                ]
-            )
+        if (isRefresh) {
+          const data: GameFeed = await fetch(`https://statsapi.mlb.com/api/v1.1/game/${gamePk}/feed/live`).then(r => r.json())
+          setFeed(data)
+          return
+        }
+
+        const [data, all]: [GameFeed, Record<string, { b?: string; f?: string }>] = await Promise.all([
+          fetch(`https://statsapi.mlb.com/api/v1.1/game/${gamePk}/feed/live`).then(r => r.json()),
+          fetch(`${import.meta.env.BASE_URL}playerLinks.json`).then(r => r.json()),
+        ])
 
         const { away, home } = data.gameData.teams
         document.title = `${away.name} vs ${home.name}`
@@ -37,13 +50,13 @@ export default function GamePage() {
         setFeed(data)
         setLinks(filtered)
       } finally {
-        setLoading(false)
+        if (!isRefresh) setLoading(false)
       }
     }
 
     load()
-    return () => { document.title = 'Baseball Scorecard' }
-  }, [gamePk])
+    return () => { if (!isRefresh) document.title = 'Baseball Scorecard' }
+  }, [gamePk, tick])
 
   if (loading) return <div className="game-page"><p className="page-msg">Loading…</p></div>
   if (!feed)   return <div className="game-page"><p className="page-msg">Game not found.</p></div>
@@ -56,7 +69,13 @@ export default function GamePage() {
 
   return (
     <div className="game-page">
-      <Link to="/" className="back-link">← Scores</Link>
+      <div className="game-nav">
+        <Link to="/" className="back-link">← Scores</Link>
+        <select className="refresh-select" value={refreshInterval} onChange={e => setRefreshInterval(Number(e.target.value))}>
+          <option value={0}>Auto-refresh off</option>
+          <option value={5000}>Every 5s</option>
+        </select>
+      </div>
 
       <div className="game-header">
         <div className="gh-team">

@@ -105,4 +105,5 @@ export interface RunnerPath {
   scored: boolean
   stolenBaseSegment?: [string, string]
   stolenBaseDesc?: string
+  outNumber?: number
 }

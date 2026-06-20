@@ -190,6 +190,14 @@ export default function App() {
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [pitcherInfo, setPitcherInfo] = useState<Record<number, PitcherInfo>>({})
+  const [refreshInterval, setRefreshInterval] = useState<number>(0)
+  const [tick, setTick] = useState(0)
+
+  useEffect(() => {
+    if (!refreshInterval) return
+    const id = setInterval(() => setTick(t => t + 1), refreshInterval)
+    return () => clearInterval(id)
+  }, [refreshInterval])
 
   useEffect(() => {
     setLoading(true)
@@ -224,7 +232,7 @@ export default function App() {
           })
       })
       .finally(() => setLoading(false))
-  }, [date])
+  }, [date, tick])
 
   return (
     <div className="app">
@@ -238,6 +246,10 @@ export default function App() {
         {date !== today && (
           <button className="today-btn" onClick={() => setDate(today)}>Today</button>
         )}
+        <select className="refresh-select" value={refreshInterval} onChange={e => setRefreshInterval(Number(e.target.value))}>
+          <option value={0}>Auto-refresh off</option>
+          <option value={5000}>Every 5s</option>
+        </select>
       </header>
       <main>
         {loading && <p className="msg">Loading...</p>}

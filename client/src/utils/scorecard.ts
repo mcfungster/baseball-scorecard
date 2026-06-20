@@ -52,6 +52,9 @@ export function getNotation(play: Play): string {
     case 'field_error':     return 'E'
     case 'catcher_interf':  return 'CI'
     case 'fielders_choice': return 'FC'
+    case 'pickoff_1b':
+    case 'pickoff_2b':
+    case 'pickoff_3b':    return 'PO'
     case 'force_out': {
       const br = play.runners.find(r => r.details.runner.id === id && r.movement.start === null)
       return br && !br.movement.isOut ? 'FC' : getOutCredits(play.runners, id, getTrajectory(play))
@@ -90,7 +93,7 @@ export function traceRunner(batterId: number, atBatIndex: number, allPlays: Play
     if (play.about.inning !== inning || play.about.halfInning !== halfInning) break
     const entry = play.runners.find(r => r.details.runner.id === batterId)
     if (!entry) continue
-    if (entry.movement.isOut) return { pathBases, scored: false, stolenBaseSegment, stolenBaseDesc }
+    if (entry.movement.isOut) return { pathBases, scored: false, stolenBaseSegment, stolenBaseDesc, outNumber: entry.movement.outNumber }
     const next = entry.movement.end
     if (!next) continue
     if (entry.details.eventType.startsWith('stolen_base') && !stolenBaseSegment) {
