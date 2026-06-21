@@ -51,7 +51,8 @@ export function getNotation(play: Play): string {
     case 'sac_fly':         return 'SF'
     case 'field_error':     return 'E'
     case 'catcher_interf':  return 'CI'
-    case 'fielders_choice': return 'FC'
+    case 'fielders_choice':
+    case 'fielders_choice_out': return 'FC'
     case 'pickoff_1b':
     case 'pickoff_2b':
     case 'pickoff_3b':    return 'PO'
