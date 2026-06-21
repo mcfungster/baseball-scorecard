@@ -110,12 +110,28 @@ export function traceRunner(batterId: number, atBatIndex: number, allPlays: Play
 
 export function buildPlayMap(allPlays: Play[]) {
   const map = new Map<string, Play>()
+  const counts = new Map<string, number>()
   for (const play of allPlays) {
     if (!play.result.eventType) continue
-    const key = `${play.about.halfInning}-${play.about.inning}-${play.matchup.batter.id}`
-    if (!map.has(key)) map.set(key, play)
+    const base = `${play.about.halfInning}-${play.about.inning}-${play.matchup.batter.id}`
+    const pass = (counts.get(base) ?? 0) + 1
+    counts.set(base, pass)
+    map.set(`${base}-${pass}`, play)
   }
   return map
+}
+
+export function buildBatAroundInnings(allPlays: Play[], halfInning: string): Set<number> {
+  const innings = new Set<number>()
+  const counts = new Map<string, number>()
+  for (const play of allPlays) {
+    if (!play.result.eventType || play.about.halfInning !== halfInning) continue
+    const key = `${play.about.inning}-${play.matchup.batter.id}`
+    const count = (counts.get(key) ?? 0) + 1
+    counts.set(key, count)
+    if (count > 1) innings.add(play.about.inning)
+  }
+  return innings
 }
 
 export function buildSubInfoMap(allPlays: Play[]) {

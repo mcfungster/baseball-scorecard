@@ -1,7 +1,7 @@
 import type { TeamBoxscore, LinescoreInning, Play, CurrentPlay } from '../types/game'
 import {
   getBattingSlots, buildPlayMap, buildLeadoffSet,
-  buildSubInfoMap, buildPositionChangeMap,
+  buildSubInfoMap, buildPositionChangeMap, buildBatAroundInnings,
   getNotation, getBatterOutNumber, traceRunner,
 } from '../utils/scorecard'
 import Diamond from './Diamond'
@@ -17,15 +17,19 @@ interface Props {
 }
 
 export default function TeamScorecard({ teamBox, halfInning, allPlays, innings, currentPlay, links }: Props) {
-  const slots        = getBattingSlots(teamBox)
-  const playMap      = buildPlayMap(allPlays)
-  const leadoffs     = buildLeadoffSet(allPlays)
-  const subInfo      = buildSubInfoMap(allPlays)
-  const posChanges   = buildPositionChangeMap(allPlays)
-  const numInnings   = Math.max(9, innings.length)
-  const inningNums   = Array.from({ length: numInnings }, (_, i) => i + 1)
-  const tb           = teamBox.teamStats.batting
-  const side         = halfInning === 'top' ? 'away' : 'home'
+  const slots          = getBattingSlots(teamBox)
+  const playMap        = buildPlayMap(allPlays)
+  const leadoffs       = buildLeadoffSet(allPlays)
+  const subInfo        = buildSubInfoMap(allPlays)
+  const posChanges     = buildPositionChangeMap(allPlays)
+  const batAroundInns  = buildBatAroundInnings(allPlays, halfInning)
+  const numInnings     = Math.max(9, innings.length)
+  const inningNums     = Array.from({ length: numInnings }, (_, i) => i + 1)
+  const inningCols     = inningNums.flatMap(n =>
+    batAroundInns.has(n) ? [{ n, pass: 1 }, { n, pass: 2 }] : [{ n, pass: 1 }]
+  )
+  const tb             = teamBox.teamStats.batting
+  const side           = halfInning === 'top' ? 'away' : 'home'
 
   return (
     <div className="sc-overflow">
@@ -35,7 +39,11 @@ export default function TeamScorecard({ teamBox, halfInning, allPlays, innings, 
             <th className="sc-order">#</th>
             <th className="sc-pos">Pos</th>
             <th className="sc-name">Player</th>
-            {inningNums.map(n => <th key={n} className="sc-inn-h">{n}</th>)}
+            {inningCols.map(col => (
+              <th key={`${col.n}-${col.pass}`} className="sc-inn-h">
+                {col.pass === 1 ? col.n : `${col.n}+`}
+              </th>
+            ))}
             <th className="sc-stat">AB</th>
             <th className="sc-stat">R</th>
             <th className="sc-stat">H</th>
@@ -89,25 +97,37 @@ export default function TeamScorecard({ teamBox, halfInning, allPlays, innings, 
                   })}
                 </td>
 
-                {inningNums.map(n => {
+                {inningCols.map(col => {
+                  const { n, pass } = col
                   let play: Play | undefined
                   let batterId: number | undefined
                   for (const p of slot) {
-                    const found = playMap.get(`${halfInning}-${n}-${p.person.id}`)
+                    const found = playMap.get(`${halfInning}-${n}-${p.person.id}-${pass}`)
                     if (found) { play = found; batterId = p.person.id; break }
                   }
 
+                  const activeBatterId = currentPlay?.matchup.batter.id
+                  const activeBatterPass = (activeBatterId && currentPlay)
+                    ? allPlays.filter(p =>
+                        p.about.halfInning === halfInning &&
+                        p.about.inning === n &&
+                        p.result.eventType &&
+                        p.matchup.batter.id === activeBatterId
+                      ).length + 1
+                    : 1
+
                   const isActive = !play
-                    && currentPlay
+                    && !!currentPlay
                     && !currentPlay.about.isComplete
                     && currentPlay.about.halfInning === halfInning
                     && currentPlay.about.inning === n
                     && slot.some(p => p.person.id === currentPlay.matchup.batter.id)
+                    && activeBatterPass === pass
 
                   if (isActive && currentPlay) {
                     const { balls, strikes } = currentPlay.count
                     return (
-                      <td key={n} className="sc-inn-cell sc-inn-active">
+                      <td key={`${n}-${pass}`} className="sc-inn-cell sc-inn-active">
                         <svg width="78" height="78" viewBox="0 0 50 50" className="diamond-svg">
                           <polygon points="25,7 43,25 25,43 7,25" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" strokeWidth="1.5" />
                           <text x="25" y="24" textAnchor="middle" fontSize="11" fill="#fbbf24"
@@ -119,13 +139,13 @@ export default function TeamScorecard({ teamBox, halfInning, allPlays, innings, 
                     )
                   }
 
-                  if (!play || !batterId) return <td key={n} className="sc-inn-cell" />
+                  if (!play || !batterId) return <td key={`${n}-${pass}`} className="sc-inn-cell" />
                   const notation  = getNotation(play)
-                  const { pathBases, scored, stolenBaseSegment, stolenBaseDesc } = traceRunner(batterId, play.atBatIndex, allPlays)
-                  const isLeadoff = leadoffs.has(`${halfInning}-${n}-${batterId}`)
-                  const outNumber = getBatterOutNumber(play, batterId)
+                  const { pathBases, scored, stolenBaseSegment, stolenBaseDesc, outNumber: runnerOutNumber } = traceRunner(batterId, play.atBatIndex, allPlays)
+                  const isLeadoff = pass === 1 && leadoffs.has(`${halfInning}-${n}-${batterId}`)
+                  const outNumber = getBatterOutNumber(play, batterId) ?? runnerOutNumber
                   return (
-                    <td key={n} className={`sc-inn-cell${isLeadoff ? ' leadoff' : ''}`} title={play.result.description}>
+                    <td key={`${n}-${pass}`} className={`sc-inn-cell${isLeadoff ? ' leadoff' : ''}`} title={play.result.description}>
                       <Diamond pathBases={pathBases} scored={scored} notation={notation}
                         outNumber={outNumber} stolenBaseSegment={stolenBaseSegment} stolenBaseDesc={stolenBaseDesc} />
                     </td>
@@ -149,10 +169,11 @@ export default function TeamScorecard({ teamBox, halfInning, allPlays, innings, 
             <td className="sc-order" />
             <td className="sc-pos" />
             <td className="sc-name">Totals</td>
-            {inningNums.map(n => {
-              const inning = innings.find(i => i.num === n)
+            {inningCols.map(col => {
+              if (col.pass > 1) return <td key={`${col.n}-${col.pass}`} className="sc-inn-cell" />
+              const inning = innings.find(i => i.num === col.n)
               return (
-                <td key={n} className="sc-inn-cell runs-cell">
+                <td key={`${col.n}-${col.pass}`} className="sc-inn-cell runs-cell">
                   {inning !== undefined ? inning[side].runs : ''}
                 </td>
               )
