@@ -124,10 +124,13 @@ export default function TeamScorecard({ teamBox, halfInning, allPlays, innings, 
                     && slot.some(p => p.person.id === currentPlay.matchup.batter.id)
                     && activeBatterPass === pass
 
+                  const effectiveBatterId = batterId ?? (isActive ? currentPlay?.matchup.batter.id : undefined)
+                  const isLeadoff = pass === 1 && !!effectiveBatterId && leadoffs.has(`${halfInning}-${n}-${effectiveBatterId}`)
+
                   if (isActive && currentPlay) {
                     const { balls, strikes } = currentPlay.count
                     return (
-                      <td key={`${n}-${pass}`} className="sc-inn-cell sc-inn-active">
+                      <td key={`${n}-${pass}`} className={`sc-inn-cell sc-inn-active${isLeadoff ? ' leadoff' : ''}`}>
                         <svg width="78" height="78" viewBox="0 0 50 50" className="diamond-svg">
                           <polygon points="25,7 43,25 25,43 7,25" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" strokeWidth="1.5" />
                           <text x="25" y="24" textAnchor="middle" fontSize="11" fill="#fbbf24"
@@ -142,7 +145,6 @@ export default function TeamScorecard({ teamBox, halfInning, allPlays, innings, 
                   if (!play || !batterId) return <td key={`${n}-${pass}`} className="sc-inn-cell" />
                   const notation  = getNotation(play)
                   const { pathBases, scored, stolenBaseSegment, stolenBaseDesc, outNumber: runnerOutNumber } = traceRunner(batterId, play.atBatIndex, allPlays)
-                  const isLeadoff = pass === 1 && leadoffs.has(`${halfInning}-${n}-${batterId}`)
                   const outNumber = getBatterOutNumber(play, batterId) ?? runnerOutNumber
                   return (
                     <td key={`${n}-${pass}`} className={`sc-inn-cell${isLeadoff ? ' leadoff' : ''}`} title={play.result.description}>
