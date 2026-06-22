@@ -71,6 +71,7 @@ function isInterrupted(game: Game) {
 function statusLabel(game: Game) {
   const { abstractGameCode, detailedState } = game.status
   const ls = game.linescore
+  if (isInterrupted(game) && abstractGameCode === 'F') return detailedState
   if (abstractGameCode === 'F') {
     const inn = ls?.currentInning ?? 0
     const sched = ls?.scheduledInnings ?? 9
@@ -91,14 +92,15 @@ function statusLabel(game: Game) {
 
 function Boxscore({ game, pitcherInfo }: { game: Game; pitcherInfo: Record<number, PitcherInfo> }) {
   const ls = game.linescore
-  const isLive = game.status.abstractGameCode === 'L' && !isInterrupted(game)
-  const isFinal = game.status.abstractGameCode === 'F'
-  const isPreview = game.status.abstractGameCode === 'P'
   const interrupted = isInterrupted(game)
+  const isPostponed = interrupted && game.status.abstractGameCode === 'F'
+  const isLive = game.status.abstractGameCode === 'L' && !interrupted
+  const isFinal = game.status.abstractGameCode === 'F' && !interrupted
+  const isPreview = game.status.abstractGameCode === 'P'
 
   const cls = `boxscore${isLive ? ' live' : isFinal ? ' final' : interrupted ? ' interrupted' : isPreview ? ' preview' : ''}`
 
-  const body = isPreview ? (
+  const body = (isPreview || isPostponed) ? (
     <>
       <div className="status">{statusLabel(game)}</div>
       <div className="preview-teams">
@@ -168,7 +170,7 @@ function Boxscore({ game, pitcherInfo }: { game: Game; pitcherInfo: Record<numbe
     </>
   )
 
-  return isPreview
+  return (isPreview || isPostponed)
     ? <div className={cls}>{body}</div>
     : <Link to={`/game/${game.gamePk}`} className={cls}>{body}</Link>
 }
