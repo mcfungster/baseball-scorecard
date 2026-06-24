@@ -92,19 +92,21 @@ export function traceRunner(batterId: number, atBatIndex: number, allPlays: Play
   for (let i = atBatIndex + 1; i < allPlays.length; i++) {
     const play = allPlays[i]
     if (play.about.inning !== inning || play.about.halfInning !== halfInning) break
-    const entry = play.runners.find(r => r.details.runner.id === batterId)
-    if (!entry) continue
-    if (entry.movement.isOut) return { pathBases, scored: false, stolenBaseSegment, stolenBaseDesc, outNumber: entry.movement.outNumber }
-    const next = entry.movement.end
-    if (!next) continue
-    if (entry.details.eventType.startsWith('stolen_base') && !stolenBaseSegment) {
-      stolenBaseSegment = [cur, next]
-      const sbEvent = play.playEvents?.find(e => e.index === entry.details.playIndex && e.type === 'action')
-      stolenBaseDesc = sbEvent?.details?.description ?? entry.details.event
+    const entries = play.runners.filter(r => r.details.runner.id === batterId)
+    if (!entries.length) continue
+    for (const entry of entries) {
+      if (entry.movement.isOut) return { pathBases, scored: false, stolenBaseSegment, stolenBaseDesc, outNumber: entry.movement.outNumber }
+      const next = entry.movement.end
+      if (!next) continue
+      if (entry.details.eventType.startsWith('stolen_base') && !stolenBaseSegment) {
+        stolenBaseSegment = [cur, next]
+        const sbEvent = play.playEvents?.find(e => e.index === entry.details.playIndex && e.type === 'action')
+        stolenBaseDesc = sbEvent?.details?.description ?? entry.details.event
+      }
+      pathBases.push(...getBasePath(cur, next))
+      cur = next
+      if (next === 'score') return { pathBases, scored: true, stolenBaseSegment, stolenBaseDesc }
     }
-    pathBases.push(...getBasePath(cur, next))
-    cur = next
-    if (next === 'score') return { pathBases, scored: true, stolenBaseSegment, stolenBaseDesc }
   }
   return { pathBases, scored: false, stolenBaseSegment, stolenBaseDesc }
 }
